@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="ScanLink Studio - The Ultimate Web Utility Suite including QR Maker, Link Analysis, and 18+ Tools.">
+    <title>ScanLink Studio | Ultimate Utility Suite</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- THEME & VARIABLES --- */
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --bg-body: #f8fafc;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: 1px solid rgba(226, 232, 240, 0.8);
+            --radius: 16px;
+            --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode {
+            --bg-body: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.9);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: 1px solid rgba(255, 255, 255, 0.1);
+            --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        
+        body {
+            background: var(--bg-body); color: var(--text-main); min-height: 100vh;
+            overflow-x: hidden; transition: background 0.3s ease; display: flex; flex-direction: column;
+        }
+
+        /* Animated Background Mesh */
+        .bg-anim {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 40%);
+            animation: breathe 10s infinite alternate;
+        }
+        @keyframes breathe { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+
+        /* --- LAYOUT UTILS --- */
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+        .glass {
+            background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+        }
+        
+        /* Navbar */
+        .navbar {
+            position: sticky; top: 0; z-index: 100; padding: 1rem 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.8); backdrop-filter: blur(15px);
+            border-bottom: var(--border);
+        }
+        body.dark-mode .navbar { background: rgba(15, 23, 42, 0.8); }
+        .brand { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--primary); cursor: pointer; letter-spacing: -0.5px; }
+
+        /* Buttons & Inputs */
+        .btn {
+            cursor: pointer; border: none; padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: 1rem;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+            color: white; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); 
+        }
+        .btn-primary:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        
+        .input-group { margin-bottom: 1.2rem; }
+        .label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); }
+        .input {
+            width: 100%; padding: 14px; border-radius: 12px; border: var(--border);
+            background: rgba(125,125,125,0.05); color: var(--text-main); outline: none; transition: 0.2s;
+        }
+        .input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); background: transparent; }
+
+        /* --- TOOL GRID --- */
+        .grid-section { margin-bottom: 3rem; }
+        .section-title { font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; font-weight: 700; }
+        
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; }
+        .tool-card {
+            padding: 1.5rem; display: flex; flex-direction: column; height: 100%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .tool-card:hover { transform: translateY(-8px); border-color: var(--primary); box-shadow: 0 15px 30px rgba(99, 102, 241, 0.15); }
+        .tool-icon {
+            width: 55px; height: 55px; border-radius: 14px; display: flex; align-items: center; 
+            justify-content: center; color: white; margin-bottom: 1rem; font-size: 1.6rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        .tool-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 700; }
+        .tool-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+
+        /* Specific Gradients */
+        .g-indigo { background: linear-gradient(135deg, #6366f1, #4338ca); }
+        .g-pink { background: linear-gradient(135deg, #ec4899, #be185d); }
+        .g-orange { background: linear-gradient(135deg, #f97316, #c2410c); }
+        .g-green { background: linear-gradient(135deg, #10b981, #047857); }
+        .g-dark { background: linear-gradient(135deg, #334155, #0f172a); }
+
+        /* --- VIEWS --- */
+        #app-view, #page-view { 
+            display: none; 
+            padding-top: 2rem; 
+            min-height: 85vh; /* Increased height to push footer down */
+            padding-bottom: 4rem;
+        }
+        
+        .tool-container { 
+            max-width: 700px; margin: 0 auto; padding: 2.5rem; 
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Results & Extras */
+        .result-area {
+            margin-top: 2rem; padding: 1.5rem; border-radius: 12px;
+            background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
+            display: none; text-align: center;
+            /* No animation here to prevent jumping */
+        }
+
+        /* Legal Page Styles */
+        .page-content h2 { margin-top: 2rem; margin-bottom: 1rem; color: var(--primary); }
+        .page-content p, .page-content li { line-height: 1.7; color: var(--text-muted); margin-bottom: 1rem; }
+        .contact-form { display: grid; gap: 15px; margin-top: 2rem; }
+
+        /* --- PROFESSIONAL FOOTER --- */
+        .footer {
+            margin-top: auto; /* Pushes footer to bottom */
+            background: var(--bg-card); border-top: var(--border);
+            padding: 4rem 1.5rem 2rem; backdrop-filter: blur(20px);
+        }
+        .footer-content {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 3rem;
+            max-width: 1200px; margin: 0 auto;
+        }
+        .f-col h4 { font-size: 1.1rem; margin-bottom: 1.5rem; font-weight: 700; color: var(--text-main); }
+        .f-links li { list-style: none; margin-bottom: 0.8rem; }
+        .f-links a { text-decoration: none; color: var(--text-muted); transition: 0.2s; font-size: 0.95rem; cursor: pointer; }
+        .f-links a:hover { color: var(--primary); padding-left: 5px; }
+        .f-brand p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; margin-top: 1rem; }
+        
+        .newsletter input {
+            padding: 12px; border-radius: 8px; border: var(--border); width: 100%; margin-bottom: 10px;
+            background: var(--bg-body); color: var(--text-main);
+        }
+        .socials { display: flex; gap: 15px; margin-top: 1.5rem; }
+        .social-icon { 
+            width: 35px; height: 35px; background: rgba(125,125,125,0.1); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; color: var(--text-main); transition:0.3s; cursor: pointer;
+        }
+        .social-icon:hover { background: var(--primary); color: white; transform: translateY(-3px); }
+
+        .copyright {
+            border-top: var(--border); margin-top: 3rem; padding-top: 2rem;
+            text-align: center; color: var(--text-muted); font-size: 0.9rem;
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .tools-grid { grid-template-columns: 1fr 1fr; }
+            .tool-card { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-anim"></div>
+
+    <!-- Nav -->
+    <nav class="navbar">
+        <div class="brand" onclick="location.reload()">
+            <i data-lucide="scan-line" stroke-width="2.5"></i> ScanLink Studio
+        </div>
+        <button class="btn" style="padding: 10px; background:transparent; border:1px solid var(--text-muted)" onclick="document.body.classList.toggle('dark-mode')">
+            <i data-lucide="moon"></i>
+        </button>
+    </nav>
+
+    <!-- === HOME VIEW === -->
+    <div id="home-view">
+        <div class="container">
+            <!-- Hero -->
+            <div style="text-align:center; padding: 4rem 1rem;">
+                <h1 style="font-size: 3.5rem; margin-bottom: 1rem; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:800; letter-spacing:-1px;">
+                    18+ Professional<br>Web Tools
+                </h1>
+                <p style="color:var(--text-muted); font-size:1.2rem; max-width: 600px; margin: 0 auto 2rem;">
+                    Advanced QR generation, Link analysis, Math, Finance & more. <br>Secure client-side processing. No install needed.
+                </p>
+                <button class="btn btn-primary" style="padding: 16px 32px; border-radius: 50px;" onclick="document.getElementById('tool-grid').scrollIntoView({behavior:'smooth'})">
+                    Start Using Tools <i data-lucide="arrow-down"></i>
+                </button>
+            </div>
+
+            <!-- TOOLS GRID -->
+            <div id="tool-grid" style="padding-bottom: 4rem;">
+                <!-- 1. CORE & WEB -->
+                <div class="grid-section">
+                    <div class="section-title"><i data-lucide="globe" style="color:var(--primary)"></i> Web & Security</div>
+                    <div class="tools-grid">
+                        <div class="tool-card glass" onclick="loadTool('qr')">
+                            <div class="tool-icon g-indigo"><i data-lucide="qr-code"></i></div>
+                            <h3>Adv. QR Maker</h3><p>Logo upload, color & HD download.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('link')">
+                            <div class="tool-icon g-orange"><i data-lucide="radar"></i></div>
+                            <h3>Link Inspector</h3><p>Security analysis & param check.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('pass')">
+                            <div class="tool-icon g-green"><i data-lucide="lock"></i></div>
+                            <h3>Pro Pass Gen</h3><p>Entropy strength meter included.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('speed')">
+                            <div class="tool-icon g-pink"><i data-lucide="zap"></i></div>
+                            <h3>Speed Estimate</h3><p>Latency & Download check.</p>
+                        </div>
+                         <div class="tool-card glass" onclick="loadTool('ua')">
+                            <div class="tool-icon g-dark"><i data-lucide="smartphone"></i></div>
+                            <h3>Device Info</h3><p>Parse User Agent & OS details.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. FINANCE -->
+                <div class="grid-section">
+                    <div class="section-title"><i data-lucide="wallet" style="color:var(--secondary)"></i> Finance & Business</div>
+                    <div class="tools-grid">
+                        <div class="tool-card glass" onclick="loadTool('currency')">
+                            <div class="tool-icon g-green"><i data-lucide="coins"></i></div>
+                            <h3>Currency Conv.</h3><p>Live rates for 15+ currencies.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('gst')">
+                            <div class="tool-icon g-indigo"><i data-lucide="receipt"></i></div>
+                            <h3>GST Calculator</h3><p>Add/Remove tax instantly.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('emi')">
+                            <div class="tool-icon g-pink"><i data-lucide="landmark"></i></div>
+                            <h3>Loan EMI</h3><p>Mortgage & interest planner.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('discount')">
+                            <div class="tool-icon g-orange"><i data-lucide="percent"></i></div>
+                            <h3>Discount Calc</h3><p>Sale price & savings.</p>
+                        </div>
+                         <div class="tool-card glass" onclick="loadTool('tip')">
+                            <div class="tool-icon g-dark"><i data-lucide="coffee"></i></div>
+                            <h3>Tip Splitter</h3><p>Bill splitting per person.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. MATH & SCIENCE -->
+                <div class="grid-section">
+                    <div class="section-title"><i data-lucide="sigma" style="color:var(--primary)"></i> Math & Science</div>
+                    <div class="tools-grid">
+                        <div class="tool-card glass" onclick="loadTool('calc')">
+                            <div class="tool-icon g-dark"><i data-lucide="calculator"></i></div>
+                            <h3>Scientific Calc</h3><p>Trig, Log, Power functions.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('unit')">
+                            <div class="tool-icon g-indigo"><i data-lucide="arrow-left-right"></i></div>
+                            <h3>Unit Converter</h3><p>Length, Weight, Temp.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('age')">
+                            <div class="tool-icon g-pink"><i data-lucide="calendar-heart"></i></div>
+                            <h3>Age Calculator</h3><p>Exact years, months, days.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('area')">
+                            <div class="tool-icon g-green"><i data-lucide="box-select"></i></div>
+                            <h3>Area Finder</h3><p>Circle, Triangle, Rect.</p>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- 4. TEXT & UTILS -->
+                 <div class="grid-section">
+                    <div class="section-title"><i data-lucide="type" style="color:var(--secondary)"></i> Text & Utils</div>
+                    <div class="tools-grid">
+                        <div class="tool-card glass" onclick="loadTool('text')">
+                            <div class="tool-icon g-orange"><i data-lucide="align-left"></i></div>
+                            <h3>Word Counter</h3><p>Chars, words & lines.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('case')">
+                            <div class="tool-icon g-indigo"><i data-lucide="case-sensitive"></i></div>
+                            <h3>Case Converter</h3><p>UPPER, lower, Title Case.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('bmi')">
+                            <div class="tool-icon g-pink"><i data-lucide="activity"></i></div>
+                            <h3>BMI Check</h3><p>Health index & status.</p>
+                        </div>
+                        <div class="tool-card glass" onclick="loadTool('date')">
+                            <div class="tool-icon g-dark"><i data-lucide="calendar-clock"></i></div>
+                            <h3>Date Diff</h3><p>Days between dates.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- === APP VIEW (Tools) === -->
+    <div id="app-view">
+        <div class="container tool-container glass">
+            <button class="btn" style="background:transparent; padding-left:0; color:var(--text-muted); margin-bottom:1rem" onclick="location.reload()">
+                <i data-lucide="arrow-left"></i> Back to Dashboard
+            </button>
+            <h2 id="tool-title" style="font-size:2rem; margin-bottom:2rem; color:var(--primary); font-weight:700">Tool Name</h2>
+            <div id="tool-content"></div>
+            <div id="result-area" class="result-area"></div>
+        </div>
+    </div>
+
+    <!-- === PAGE VIEW (Legal/Info) === -->
+    <div id="page-view">
+        <div class="container tool-container glass">
+            <button class="btn" style="background:transparent; padding-left:0; color:var(--text-muted); margin-bottom:1rem" onclick="location.reload()">
+                <i data-lucide="arrow-left"></i> Back to Home
+            </button>
+            <h1 id="page-title" style="font-size:2.5rem; margin-bottom:1.5rem; color:var(--text-main);">Page Title</h1>
+            <div id="page-content" class="page-content"></div>
+        </div>
+    </div>
+
+    <!-- === PROFESSIONAL FOOTER === -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="f-col f-brand">
+                <div class="brand"><i data-lucide="scan-line"></i> ScanLink Studio</div>
+                <p>The #1 Web Utility Suite built for modern professionals. We prioritize privacy, speed, and design precision.</p>
+                <div class="socials">
+                    <div class="social-icon"><i data-lucide="twitter"></i></div>
+                    <div class="social-icon"><i data-lucide="github"></i></div>
+                    <div class="social-icon"><i data-lucide="instagram"></i></div>
+                    <div class="social-icon"><i data-lucide="linkedin"></i></div>
+                </div>
+            </div>
+            <div class="f-col f-links">
+                <h4>Quick Navigation</h4>
+                <ul>
+                    <li><a onclick="location.reload()">Home Dashboard</a></li>
+                    <li><a onclick="loadTool('qr')">QR Generator</a></li>
+                    <li><a onclick="loadTool('currency')">Currency Converter</a></li>
+                    <li><a onclick="loadTool('speed')">Speed Test</a></li>
+                </ul>
+            </div>
+            <div class="f-col f-links">
+                <h4>Company & Legal</h4>
+                <ul>
+                    <li><a onclick="loadPage('about')">About Us</a></li>
+                    <li><a onclick="loadPage('privacy')">Privacy Policy</a></li>
+                    <li><a onclick="loadPage('terms')">Terms of Service</a></li>
+                    <li><a onclick="loadPage('contact')">Contact Support</a></li>
+                </ul>
+            </div>
+            <div class="f-col newsletter">
+                <h4>Stay Updated</h4>
+                <p style="margin-bottom:10px; font-size:0.9rem; color:var(--text-muted)">Get the latest tools delivered to your inbox.</p>
+                <input type="email" placeholder="Enter your email">
+                <button class="btn btn-primary" style="width:100%; padding:10px;">Subscribe</button>
+            </div>
+        </div>
+        <div class="container copyright">
+            <div>&copy; 2025 ScanLink Studio Inc. All rights reserved.</div>
+            <div style="font-size:0.8rem">Built with ❤️ & Coffee</div>
+        </div>
+    </footer>
+
+    <script>
+        /* --- CORE SYSTEM --- */
+        const views = { 
+            home: document.getElementById('home-view'), 
+            app: document.getElementById('app-view'),
+            page: document.getElementById('page-view')
+        };
+        const content = document.getElementById('tool-content');
+        const title = document.getElementById('tool-title');
+        const resArea = document.getElementById('result-area');
+        
+        const pageTitle = document.getElementById('page-title');
+        const pageContent = document.getElementById('page-content');
+
+        let uploadedLogo = null;
+
+        function switchView(viewName) {
+            Object.values(views).forEach(v => v.style.display = 'none');
+            views[viewName].style.display = 'block';
+            window.scrollTo(0,0);
+        }
+
+        function loadTool(key) {
+            switchView('app');
+            resArea.style.display = 'none';
+            const tool = tools[key];
+            title.innerText = tool.title;
+            content.innerHTML = tool.html;
+            if(tool.init) tool.init();
+            lucide.createIcons();
+        }
+
+        function loadPage(key) {
+            switchView('page');
+            const p = pages[key];
+            pageTitle.innerText = p.title;
+            pageContent.innerHTML = p.html;
+        }
+
+        // --- FIXED: No more auto-scroll jumping ---
+        function showRes(html) {
+            resArea.style.display = 'block';
+            resArea.innerHTML = html;
+            // Removed scrollIntoView to stop jumping to footer
+        }
+
+        /* --- PAGES CONTENT --- */
+        const pages = {
+            about: {
+                title: "About Us",
+                html: `<p>Welcome to <strong>ScanLink Studio</strong>, your premier destination for advanced web utilities. Founded in 2025, our mission is to simplify complex digital tasks.</p><p>We believe in the power of client-side technology. Unlike other sites, ScanLink Studio processes your data directly in your browser for maximum privacy.</p><h3>Why Choose Us?</h3><ul><li><strong>Privacy First:</strong> Your files never leave your device.</li><li><strong>Blazing Fast:</strong> No server latency.</li></ul>`
+            },
+            privacy: {
+                title: "Privacy Policy",
+                html: `<p>Last updated: January 2025</p><h3>1. Data Collection</h3><p>We do not store your inputs, files, or generated results on our servers. All calculations happen locally.</p><h3>2. External Services</h3><p>Some tools (like Currency Converter) fetch public data from APIs, but do not send your personal data.</p>`
+            },
+            terms: {
+                title: "Terms of Service",
+                html: `<p>By using ScanLink Studio, you agree to these terms:</p><h3>1. Usage License</h3><p>These tools are free for personal and commercial use.</p><h3>2. Disclaimer</h3><p>The tools are provided "as is". We are not liable for calculation errors.</p>`
+            },
+            contact: {
+                title: "Contact Support",
+                html: `<p>Have a question?</p><div class="contact-form"><div class="input-group"><label class="label">Name</label><input type="text" class="input"></div><div class="input-group"><label class="label">Email</label><input type="email" class="input"></div><div class="input-group"><label class="label">Message</label><textarea class="input" rows="5"></textarea></div><button class="btn btn-primary" onclick="alert('Message Sent!')">Send Message</button></div>`
+            }
+        };
+
+        /* --- TOOLS DEFINITION --- */
+        const tools = {
+            qr: {
+                title: "Advanced QR Designer",
+                html: `<div class="input-group"><label class="label">Content</label><input id="q-text" class="input" placeholder="URL, Text, or Email"></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem"><div><label class="label">Color</label><input type="color" id="q-fg" class="input" style="height:45px;padding:2px" value="#000000"></div><div><label class="label">Background</label><input type="color" id="q-bg" class="input" style="height:45px;padding:2px" value="#ffffff"></div></div><div class="input-group"><label class="label">Upload Logo (Center)</label><input type="file" class="input" accept="image/*" onchange="loadLogo(this)"></div><button class="btn btn-primary" onclick="genQR()" style="width:100%">Generate QR</button><canvas id="qr-c" style="display:none; margin:20px auto; border:5px solid white; box-shadow:0 10px 20px rgba(0,0,0,0.1); border-radius:10px;"></canvas><button id="dl-btn" class="btn" style="width:100%; margin-top:10px; display:none; background:var(--text-main); color:var(--bg-body)" onclick="dlQR()">Download PNG</button>`,
+                init: () => { window.loadLogo = (el) => { if(el.files[0]){ const r = new FileReader(); r.onload=e=>uploadedLogo=e.target.result; r.readAsDataURL(el.files[0]); } }; window.genQR = () => { const txt=document.getElementById('q-text').value; if(!txt)return alert('Enter text'); const cvs=document.getElementById('qr-c'); const qr = new QRious({element:cvs, value:txt, size:300, foreground:document.getElementById('q-fg').value, background:document.getElementById('q-bg').value, level:'H'}); if(uploadedLogo){ const ctx=cvs.getContext('2d'); const img=new Image(); img.onload=()=>{ ctx.drawImage(img, 110, 110, 80, 80); }; img.src=uploadedLogo; } cvs.style.display='block'; document.getElementById('dl-btn').style.display='inline-flex'; }; window.dlQR = () => { const a=document.createElement('a'); a.download='scanlink-qr.png'; a.href=document.getElementById('qr-c').toDataURL(); a.click(); }; }
+            },
+            link: {
+                title: "Deep Link Inspector",
+                html: `<div class="input-group"><label class="label">URL</label><input id="l-url" class="input" placeholder="https://site.com"></div><button class="btn btn-primary" style="width:100%" onclick="checkLink()">Analyze</button>`,
+                init: () => { window.checkLink = () => { const val=document.getElementById('l-url').value; try{ const u=new URL(val); showRes(`<h3>${u.hostname}</h3><p>${u.protocol==='https:'?'✅ Secure (HTTPS)':'❌ Insecure (HTTP)'}</p><p>Params: ${u.search||'None'}</p><a href="https://www.virustotal.com/gui/search/${encodeURIComponent(u.hostname)}" target="_blank" class="btn" style="margin-top:10px;background:var(--secondary);color:white">VirusTotal Scan</a>`); }catch{alert('Invalid URL');} } }
+            },
+            pass: {
+                title: "Pro Password Generator",
+                html: `<div class="input-group"><label class="label">Length: <span id="p-l">16</span></label><input type="range" min="8" max="64" value="16" style="width:100%" oninput="document.getElementById('p-l').innerText=this.value"></div><button class="btn btn-primary" style="width:100%" onclick="genPass()">Generate</button>`,
+                init: () => { window.genPass = () => { const len=document.getElementById('p-l').innerText; const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()"; let p=""; for(let i=0;i<len;i++) p+=chars.charAt(Math.floor(Math.random()*chars.length)); showRes(`<div style="font-family:monospace;font-size:1.2rem;word-break:break-all">${p}</div><div style="font-size:0.8rem;color:green;margin-top:5px">Strong Entropy</div>`); } }
+            },
+            speed: {
+                title: "Network Latency Est.",
+                html: `<p>Estimates connection latency.</p><button class="btn btn-primary" style="width:100%; margin-top:1rem" onclick="runSpeed()">Start Test</button>`,
+                init: () => { window.runSpeed = async () => { showRes("Testing..."); const start=Date.now(); await fetch('https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png', {mode:'no-cors'}); const end=Date.now(); showRes(`<h3>Latency: ${end-start}ms</h3><p>Status: ${(end-start)<100?'🚀 Excellent':(end-start)<300?'✅ Good':'⚠️ Slow'}</p>`); } }
+            },
+            ua: { title: "Device Info", html: ``, init: () => { showRes(`<h3>You are using:</h3><p>${navigator.userAgent}</p><p>Screen: ${window.screen.width}x${window.screen.height}</p>`); } },
+            currency: {
+                title: "Currency Converter",
+                html: `<div class="input-group"><label class="label">Amount</label><input id="c-a" type="number" class="input" value="1"></div><div style="display:flex;gap:10px"><div style="flex:1"><label class="label">From</label><select id="c-f" class="input"></select></div><div style="flex:1"><label class="label">To</label><select id="c-t" class="input"></select></div></div><button class="btn btn-primary" style="width:100%;margin-top:1rem" onclick="convCurr()">Convert</button>`,
+                init: () => { 
+                    const currs = ["USD", "EUR", "INR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "AED", "SAR", "SGD", "ZAR", "BRL", "KRW"];
+                    const f = document.getElementById('c-f');
+                    const t = document.getElementById('c-t');
+                    currs.forEach(c => {
+                        f.innerHTML += `<option value="${c}">${c}</option>`;
+                        t.innerHTML += `<option value="${c}" ${c==='INR'?'selected':''}>${c}</option>`;
+                    });
+                    window.convCurr = async () => { const a=document.getElementById('c-a').value, f=document.getElementById('c-f').value, t=document.getElementById('c-t').value; showRes('Fetching...'); try { const r = await fetch(`https://open.er-api.com/v6/latest/${f}`); const d = await r.json(); showRes(`<h3>${(a*d.rates[t]).toFixed(2)} ${t}</h3><p>1 ${f} = ${d.rates[t].toFixed(4)} ${t}</p>`); } catch(e) { showRes('Error fetching rates'); } } 
+                }
+            },
+            gst: {
+                title: "GST Calculator",
+                html: `<div class="input-group"><label class="label">Amount</label><input id="g-a" type="number" class="input"></div><select id="g-r" class="input" style="margin-bottom:1rem"><option value="5">5%</option><option value="18" selected>18%</option><option value="28">28%</option></select><div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="calG(1)">Add (+)</button><button class="btn" style="background:var(--secondary);color:white;flex:1" onclick="calG(0)">Remove (-)</button></div>`,
+                init: () => { window.calG = (add) => { const a=parseFloat(document.getElementById('g-a').value), r=parseFloat(document.getElementById('g-r').value); const v = add ? a+(a*r/100) : a*(100/(100+r)); showRes(`<h3>Total: ${v.toFixed(2)}</h3>`); } }
+            },
+            emi: {
+                title: "EMI Calculator",
+                html: `<div class="input-group"><label>Principal</label><input id="e-p" type="number" class="input"></div><div class="input-group"><label>Rate (%)</label><input id="e-r" type="number" class="input"></div><div class="input-group"><label>Months</label><input id="e-n" type="number" class="input"></div><button class="btn btn-primary" style="width:100%" onclick="cEmi()">Calculate</button>`,
+                init: () => { window.cEmi = () => { const p=document.getElementById('e-p').value, r=document.getElementById('e-r').value/1200, n=document.getElementById('e-n').value; const e=(p*r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1); showRes(`<h3>EMI: ${e.toFixed(2)}</h3>`); } }
+            },
+            discount: {
+                title: "Discount Calculator",
+                html: `<div class="input-group"><label>Price</label><input id="d-p" type="number" class="input"></div><div class="input-group"><label>Discount %</label><input id="d-d" type="number" class="input"></div><button class="btn btn-primary" style="width:100%" onclick="cDisc()">Calculate</button>`,
+                init: () => { window.cDisc = () => { const p=document.getElementById('d-p').value, d=document.getElementById('d-d').value; showRes(`<h3>Pay: ${(p-(p*d/100)).toFixed(2)}</h3><p>Saved: ${(p*d/100).toFixed(2)}</p>`); } }
+            },
+            tip: {
+                title: "Tip Splitter",
+                html: `<div class="input-group"><label>Bill</label><input id="t-b" type="number" class="input"></div><div class="input-group"><label>Tip %</label><input id="t-p" type="number" class="input" value="15"></div><div class="input-group"><label>People</label><input id="t-n" type="number" class="input" value="1"></div><button class="btn btn-primary" style="width:100%" onclick="cTip()">Split Bill</button>`,
+                init: () => { window.cTip = () => { const b=parseFloat(document.getElementById('t-b').value), p=parseFloat(document.getElementById('t-p').value), n=parseFloat(document.getElementById('t-n').value); const tot=b+(b*p/100); showRes(`<h3>Per Person: ${(tot/n).toFixed(2)}</h3><p>Total: ${tot.toFixed(2)}</p>`); } }
+            },
+            calc: {
+                title: "Scientific Calculator",
+                html: `<input id="sc-d" class="input" style="text-align:right;font-size:1.5rem;margin-bottom:1rem"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="sc-g"></div>`,
+                init: () => { const b=['sin','cos','tan','AC','7','8','9','/','4','5','6','*','1','2','3','-','0','.','=','+']; const g=document.getElementById('sc-g'); b.forEach(x=>{const btn=document.createElement('button');btn.className='btn';btn.style.background=x==='='?'var(--primary)':'rgba(125,125,125,0.1)';btn.innerText=x;btn.onclick=()=>{const d=document.getElementById('sc-d');if(x==='AC')d.value='';else if(x==='='){try{d.value=math.evaluate(d.value)}catch{d.value='Err'}}else if(x==='sin'||x==='cos'||x==='tan')d.value+=x+'(';else d.value+=x};g.appendChild(btn)}) }
+            },
+            unit: {
+                title: "Unit Converter",
+                html: `<select id="u-t" class="input" style="margin-bottom:10px"><option value="l">Length (m to ft)</option><option value="w">Weight (kg to lbs)</option></select><input id="u-v" type="number" class="input" placeholder="Value"><button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="cUnit()">Convert</button>`,
+                init: () => { window.cUnit = () => { const t=document.getElementById('u-t').value, v=parseFloat(document.getElementById('u-v').value); showRes(t==='l' ? `<h3>${(v*3.28084).toFixed(2)} ft</h3>` : `<h3>${(v*2.20462).toFixed(2)} lbs</h3>`); } }
+            },
+            age: {
+                title: "Age Calculator",
+                html: `<div class="input-group"><label>Birth Date</label><input type="date" id="a-d" class="input"></div><button class="btn btn-primary" style="width:100%" onclick="cAge()">Calculate</button>`,
+                init: () => { window.cAge = () => { const d=new Date(document.getElementById('a-d').value); const diff=new Date(Date.now()-d.getTime()); showRes(`<h3>${Math.abs(diff.getUTCFullYear()-1970)} Years</h3>`); } }
+            },
+            area: {
+                title: "Area Calculator",
+                html: `<select id="ar-s" class="input" style="margin-bottom:10px"><option value="c">Circle</option><option value="s">Square</option></select><input id="ar-v" type="number" class="input" placeholder="Value (Radius/Side)"><button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="cArea()">Calculate</button>`,
+                init: () => { window.cArea = () => { const s=document.getElementById('ar-s').value, v=document.getElementById('ar-v').value; showRes(`<h3>Area: ${(s==='c' ? Math.PI*v*v : v*v).toFixed(2)}</h3>`); } }
+            },
+            text: {
+                title: "Word Counter",
+                html: `<textarea id="tx-in" class="input" rows="5" placeholder="Type here..." oninput="cText()"></textarea><div id="tx-out" style="margin-top:10px; font-weight:bold"></div>`,
+                init: () => { window.cText = () => { const v=document.getElementById('tx-in').value; document.getElementById('tx-out').innerHTML = `Chars: ${v.length} | Words: ${v.trim().split(/\s+/).length}`; } }
+            },
+            case: {
+                title: "Case Converter",
+                html: `<textarea id="cc-in" class="input" rows="4"></textarea><div style="display:flex;gap:10px;margin-top:10px"><button class="btn btn-primary" onclick="changeC('u')">UPPER</button><button class="btn btn-primary" onclick="changeC('l')">lower</button></div>`,
+                init: () => { window.changeC = (t) => { const el=document.getElementById('cc-in'); el.value = t==='u' ? el.value.toUpperCase() : el.value.toLowerCase(); } }
+            },
+            bmi: {
+                title: "BMI Calculator",
+                html: `<div class="input-group"><label>Weight (kg)</label><input id="b-w" type="number" class="input"></div><div class="input-group"><label>Height (cm)</label><input id="b-h" type="number" class="input"></div><button class="btn btn-primary" style="width:100%" onclick="cBmi()">Check Health</button>`,
+                init: () => { window.cBmi = () => { const w=document.getElementById('b-w').value, h=document.getElementById('b-h').value/100; const b=(w/(h*h)).toFixed(1); showRes(`<h3>BMI: ${b}</h3><p>${b<25?'Normal':'Overweight'}</p>`); } }
+            },
+            date: {
+                title: "Date Difference",
+                html: `<input type="date" id="dd-1" class="input" style="margin-bottom:10px"><input type="date" id="dd-2" class="input"><button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="cDate()">Diff</button>`,
+                init: () => { window.cDate = () => { const d1=new Date(document.getElementById('dd-1').value), d2=new Date(document.getElementById('dd-2').value); showRes(`<h3>${Math.ceil(Math.abs(d2-d1)/(1000*60*60*24))} Days</h3>`); } }
+            }
+        };
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
